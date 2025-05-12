@@ -19,7 +19,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize Socket.IO connection
   let socket;
   if (typeof io !== 'undefined' && document.querySelector('[data-socket-enabled="true"]')) {
-    socket = io();
+    socket = io({
+      transports: ['polling', 'websocket'],
+      forceNew: true
+    });
 
     // Handle connection
     socket.on('connect', function() {
