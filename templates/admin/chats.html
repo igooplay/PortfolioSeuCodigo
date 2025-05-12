@@ -63,7 +63,7 @@
             </div>
             
             <!-- Chat messages -->
-            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto">
+            <div id="chat-messages" class="chat-container flex-grow p-4 overflow-y-auto" data-current-user="{{ current_user.id }}">
                 {% for message in messages %}
                 <div class="mb-4 flex {% if message.sender_id == current_user.id %}justify-end{% endif %}">
                     <div class="max-w-3/4 {% if message.sender_id == current_user.id %}bg-primary-600 text-white{% else %}bg-dark-700 text-gray-200{% endif %} rounded-lg px-4 py-2">

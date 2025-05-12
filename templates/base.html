@@ -62,6 +62,11 @@
     {% endif %}
     
     {% block head %}{% endblock %}
+    
+    <!-- Conditional Socket.IO inclusion -->
+    {% if socket_enabled|default(false) %}
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    {% endif %}
 </head>
 <body class="dark min-h-screen flex flex-col bg-dark-900 text-gray-100 font-sans">
     <!-- Header/Navigation -->
@@ -294,6 +299,13 @@
 
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- Conditional Chat JS inclusion -->
+    {% if socket_enabled|default(false) %}
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    <div data-socket-enabled="true" style="display: none;"></div>
+    {% endif %}
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>
