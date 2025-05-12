@@ -21,7 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof io !== 'undefined' && document.querySelector('[data-socket-enabled="true"]')) {
     socket = io({
       transports: ['polling', 'websocket'],
-      forceNew: true
+      forceNew: true,
+      secure: true,
+      rejectUnauthorized: false
     });
 
     // Handle connection
