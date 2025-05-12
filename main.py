@@ -163,6 +163,10 @@ with app.app_context():
         print("Dados de exemplo criados com sucesso!")
 
 if __name__ == '__main__':
+    # Monkey patch para o eventlet (necessário para WebSockets)
+    import eventlet
+    eventlet.monkey_patch()
+    
     # Use socketio.run() instead of app.run()
     from app import socketio
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

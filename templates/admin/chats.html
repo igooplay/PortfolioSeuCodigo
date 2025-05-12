@@ -86,9 +86,9 @@
             
             <!-- Chat input -->
             <div class="p-4 border-t border-dark-700/50">
-                <form action="{{ url_for('send_message') }}" method="post" id="chat-form" class="flex">
-                    <input type="hidden" name="recipient_id" value="{{ current_chat_user.id }}">
-                    <input type="text" name="content" class="flex-grow bg-dark-700 text-white border border-dark-600 rounded-l-md p-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Digite sua mensagem...">
+                <form id="message-form" class="flex">
+                    <input type="hidden" id="partner-id" value="{{ current_chat_user.id }}">
+                    <input type="text" id="content" name="content" class="flex-grow bg-dark-700 text-white border border-dark-600 rounded-l-md p-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Digite sua mensagem...">
                     <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 rounded-r-md">
                         <i class="fas fa-paper-plane"></i>
                     </button>
@@ -142,52 +142,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     item.style.display = 'none';
                 }
-            });
-        });
-    }
-    
-    // Handle form submission with AJAX
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-        chatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const recipientId = this.querySelector('input[name="recipient_id"]').value;
-            const content = this.querySelector('input[name="content"]').value;
-            const messageInput = this.querySelector('input[name="content"]');
-            
-            if (!content.trim()) return;
-            
-            // Send message via AJAX
-            fetch('{{ url_for("send_message") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    recipient_id: recipientId,
-                    content: content
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Add message to chat
-                const messageEl = document.createElement('div');
-                messageEl.className = 'mb-4 flex justify-end';
-                messageEl.innerHTML = `
-                    <div class="max-w-3/4 bg-primary-600 text-white rounded-lg px-4 py-2">
-                        <p>${data.content}</p>
-                        <p class="text-xs text-primary-200 mt-1">${new Date().toLocaleString()}</p>
-                    </div>
-                `;
-                chatMessages.appendChild(messageEl);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                
-                // Clear input
-                messageInput.value = '';
-            })
-            .catch(error => {
-                console.error('Error:', error);
             });
         });
     }
