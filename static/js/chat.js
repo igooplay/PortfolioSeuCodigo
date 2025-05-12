@@ -1,4 +1,4 @@
-// Chat functionality for SeuCodigo
+// Chat functionality for SeuCodigo with Socket.IO
 
 document.addEventListener('DOMContentLoaded', function() {
   const chatContainer = document.querySelector('.chat-container');
@@ -15,8 +15,43 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize chat scroll position
   scrollChatToBottom();
+
+  // Initialize Socket.IO connection
+  let socket;
+  if (typeof io !== 'undefined' && document.querySelector('[data-socket-enabled="true"]')) {
+    socket = io();
+
+    // Handle connection
+    socket.on('connect', function() {
+      console.log('Connected to Socket.IO server');
+      
+      // Join chat room with partner
+      if (partnerId) {
+        socket.emit('join_chat', { partner_id: partnerId });
+      }
+    });
+    
+    // Handle disconnection
+    socket.on('disconnect', function() {
+      console.log('Disconnected from Socket.IO server');
+    });
+    
+    // Handle new messages
+    socket.on('new_message', function(message) {
+      console.log('New message received:', message);
+      addMessageToChat(message);
+      scrollChatToBottom();
+    });
+    
+    // Handle message notifications
+    socket.on('new_message_notification', function(message) {
+      console.log('New message notification received:', message);
+      // Could add notification logic here for unread messages
+      // If we're not in the current chat, we could display a notification
+    });
+  }
   
-  // Send message via AJAX
+  // Send message form handler
   if (messageForm && partnerId) {
     messageForm.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -24,36 +59,48 @@ document.addEventListener('DOMContentLoaded', function() {
       const content = messageInput.value.trim();
       if (!content) return;
       
-      fetch('/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      if (socket && socket.connected) {
+        // Send via Socket.IO
+        socket.emit('send_message', {
           content: content,
           recipient_id: parseInt(partnerId)
-        }),
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
-      .then(data => {
-        // Add the new message to the chat
-        addMessageToChat(data);
+        });
         
         // Clear the input
         messageInput.value = '';
-        
-        // Scroll to the bottom of the chat
-        scrollChatToBottom();
-      })
-      .catch(error => {
-        console.error('Error sending message:', error);
-        alert('Erro ao enviar mensagem. Por favor, tente novamente.');
-      });
+      } else {
+        // Fallback to AJAX
+        fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: content,
+            recipient_id: parseInt(partnerId)
+          }),
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Add the new message to the chat
+          addMessageToChat(data);
+          
+          // Clear the input
+          messageInput.value = '';
+          
+          // Scroll to the bottom of the chat
+          scrollChatToBottom();
+        })
+        .catch(error => {
+          console.error('Error sending message:', error);
+          alert('Erro ao enviar mensagem. Por favor, tente novamente.');
+        });
+      }
     });
   }
   
@@ -88,9 +135,9 @@ document.addEventListener('DOMContentLoaded', function() {
     chatContainer.appendChild(messageElement);
   }
   
-  // Periodic check for new messages
+  // Periodic check for new messages (fallback for non-socket connections)
   function fetchMessages() {
-    if (!chatContainer || !partnerId) return;
+    if (!chatContainer || !partnerId || (socket && socket.connected)) return;
     
     fetch(`/api/messages?partner_id=${partnerId}`)
       .then(response => {
@@ -116,11 +163,11 @@ document.addEventListener('DOMContentLoaded', function() {
       });
   }
   
-  // Initial fetch
-  if (chatContainer && partnerId) {
+  // Initial fetch for fallback only
+  if (chatContainer && partnerId && (!socket || !socket.connected)) {
     fetchMessages();
     
-    // Fetch new messages every 5 seconds
+    // Fetch new messages every 5 seconds as fallback
     setInterval(fetchMessages, 5000);
   }
   
@@ -130,6 +177,11 @@ document.addEventListener('DOMContentLoaded', function() {
   chatUserLinks.forEach(link => {
     link.addEventListener('click', function(e) {
       e.preventDefault();
+      
+      // Leave current chat room if connected
+      if (socket && socket.connected && partnerId) {
+        socket.emit('leave_chat', { partner_id: partnerId });
+      }
       
       // Remove active class from all user links
       chatUserLinks.forEach(el => el.classList.remove('bg-indigo-100'));

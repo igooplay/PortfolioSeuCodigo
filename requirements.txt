@@ -10,3 +10,5 @@ sqlalchemy
 werkzeug 
 wtforms
 pymysql
+eventlet
+flask-socketio

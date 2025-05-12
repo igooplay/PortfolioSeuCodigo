@@ -7,6 +7,7 @@ from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 # Importe a configuração MySQL
 import mysql_config
@@ -28,6 +29,9 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # needed for url_for
 
 # Enable CORS
 CORS(app)
+
+# Initialize Socket.IO
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Configure database connection
 # Verifica se estamos usando PostgreSQL (variável de ambiente DATABASE_URL) ou MySQL

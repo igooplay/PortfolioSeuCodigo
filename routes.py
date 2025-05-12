@@ -1,10 +1,11 @@
 import os
 from flask import render_template, flash, redirect, url_for, request, jsonify, abort
 from flask_login import login_user, logout_user, current_user, login_required
-from app import app, db
+from app import app, db, socketio
 from models import User, Project, Service, Testimonial, ChatMessage, SiteConfig
 from forms import LoginForm, RegistrationForm, ProfileForm, ProjectForm, ServiceForm, TestimonialForm, ChatMessageForm, SiteConfigForm
 from urllib.parse import urlparse
+from flask_socketio import emit, join_room, leave_room
 
 # Public routes
 @app.route('/')
@@ -114,7 +115,7 @@ def profile():
     return render_template('profile.html', title='Meu Perfil - SeuCodigo', form=form)
 
 # Chat routes
-@app.route('/chat', methods=['GET', 'POST'])
+@app.route('/chat', methods=['GET'])
 @login_required
 def chat():
     form = ChatMessageForm()
@@ -125,24 +126,30 @@ def chat():
         flash('Não há administrador disponível para chat no momento.', 'warning')
         return redirect(url_for('index'))
     
-    if form.validate_on_submit():
-        message = ChatMessage(
-            sender_id=current_user.id,
-            recipient_id=admin.id,
-            content=form.content.data
-        )
-        db.session.add(message)
-        db.session.commit()
-        form.content.data = ''
-        flash('Mensagem enviada!', 'success')
-    
     # Get chat history between current user and admin
     messages = ChatMessage.query.filter(
         ((ChatMessage.sender_id == current_user.id) & (ChatMessage.recipient_id == admin.id)) |
         ((ChatMessage.sender_id == admin.id) & (ChatMessage.recipient_id == current_user.id))
     ).order_by(ChatMessage.timestamp).all()
     
-    return render_template('chat.html', title='Chat - SeuCodigo', form=form, messages=messages, admin=admin)
+    # Mark unread messages as read
+    unread_messages = ChatMessage.query.filter_by(
+        recipient_id=current_user.id, 
+        sender_id=admin.id,
+        read=False
+    ).all()
+    
+    for msg in unread_messages:
+        msg.read = True
+    
+    db.session.commit()
+    
+    return render_template('chat.html', 
+                          title='Chat - SeuCodigo', 
+                          form=form, 
+                          messages=messages, 
+                          admin=admin, 
+                          socket_enabled=True)
 
 @app.route('/api/messages', methods=['GET'])
 @login_required
@@ -560,16 +567,90 @@ def admin_chats():
     else:
         messages = []
     
+    form = ChatMessageForm()
+    
     return render_template('admin/chats.html', 
                           title='Gerenciar Mensagens - SeuCodigo',
                           users_with_messages=users,
                           current_chat_user=selected_user,
-                          messages=messages)
+                          messages=messages,
+                          form=form,
+                          socket_enabled=True)
 
 # Página de teste para admin
 @app.route('/admin-test')
 def admin_test():
     return render_template('admin_test.html')
+
+# Socket.IO event handlers
+@socketio.on('connect')
+def handle_connect():
+    if current_user.is_authenticated:
+        # Create a personal room for the user
+        join_room(str(current_user.id))
+        app.logger.info(f'User {current_user.id} connected')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    if current_user.is_authenticated:
+        leave_room(str(current_user.id))
+        app.logger.info(f'User {current_user.id} disconnected')
+
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    if current_user.is_authenticated:
+        # Join a chat room between the current user and the partner
+        partner_id = data.get('partner_id')
+        if partner_id:
+            # Create a unique room name for the conversation
+            room = get_chat_room_name(current_user.id, int(partner_id))
+            join_room(room)
+            app.logger.info(f'User {current_user.id} joined chat room with {partner_id}')
+
+@socketio.on('leave_chat')
+def handle_leave_chat(data):
+    if current_user.is_authenticated:
+        partner_id = data.get('partner_id')
+        if partner_id:
+            room = get_chat_room_name(current_user.id, int(partner_id))
+            leave_room(room)
+            app.logger.info(f'User {current_user.id} left chat room with {partner_id}')
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    if not current_user.is_authenticated:
+        return
+    
+    content = data.get('content')
+    recipient_id = data.get('recipient_id')
+    
+    if not content or not recipient_id:
+        return
+    
+    # Save the message to the database
+    message = ChatMessage(
+        sender_id=current_user.id,
+        recipient_id=int(recipient_id),
+        content=content
+    )
+    db.session.add(message)
+    db.session.commit()
+    
+    # Prepare message data for the clients
+    message_data = message.to_dict()
+    
+    # Emit to the chat room
+    room = get_chat_room_name(current_user.id, int(recipient_id))
+    emit('new_message', message_data, to=room)
+    
+    # Also emit to the recipient's personal room in case they're not in the chat room
+    emit('new_message_notification', message_data, to=str(recipient_id))
+    app.logger.info(f'Message sent from {current_user.id} to {recipient_id}')
+
+# Helper function to create a consistent chat room name
+def get_chat_room_name(user1_id, user2_id):
+    # Always use the smaller ID first to ensure consistent room names
+    return f"chat_{min(user1_id, user2_id)}_{max(user1_id, user2_id)}"
 
 # Error handlers
 @app.errorhandler(404)
