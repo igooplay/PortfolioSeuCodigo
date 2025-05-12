@@ -167,6 +167,6 @@ if __name__ == '__main__':
     import eventlet
     eventlet.monkey_patch()
     
-    # Use socketio.run() instead of app.run()
+    # Use socketio.run() instead of app.run() with SSL support
     from app import socketio
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True, ssl_context='adhoc')
