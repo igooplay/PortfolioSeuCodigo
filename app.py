@@ -24,7 +24,8 @@ db = SQLAlchemy(model_class=Base)
 
 # Create Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
+app.config['WTF_CSRF_SECRET_KEY'] = os.environ.get("CSRF_SECRET_KEY") or os.urandom(24)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # needed for url_for to generate with https
 
 # Enable CORS
