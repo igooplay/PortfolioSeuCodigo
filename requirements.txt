@@ -12,3 +12,4 @@ wtforms
 pymysql
 eventlet
 flask-socketio
+eventlet

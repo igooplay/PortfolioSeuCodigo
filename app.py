@@ -31,8 +31,16 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # needed for url_for
 # Enable CORS
 CORS(app)
 
-# Initialize Socket.IO com suporte a long polling como fallback e uso explícito de HTTPS
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ssl_context='adhoc')
+# Initialize Socket.IO com modo assíncrono eventlet e configurações otimizadas
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='eventlet',
+    ping_timeout=60,
+    ping_interval=25,
+    engineio_logger=True,
+    ssl_context='adhoc'
+)
 
 # Configure database connection
 # Verifica se estamos usando PostgreSQL (variável de ambiente DATABASE_URL) ou MySQL

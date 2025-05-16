@@ -165,8 +165,8 @@ with app.app_context():
 if __name__ == '__main__':
     # Monkey patch para o eventlet (necessário para WebSockets)
     import eventlet
-    eventlet.monkey_patch()
+    eventlet.monkey_patch(socket=True, select=True, thread=True)
     
     # Use socketio.run() instead of app.run() with SSL support
     from app import socketio
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True, ssl_context='adhoc')
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
