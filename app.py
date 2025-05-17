@@ -31,15 +31,18 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # needed for url_for
 # Enable CORS
 CORS(app)
 
-# Initialize Socket.IO com modo assíncrono eventlet e configurações otimizadas
+# Initialize Socket.IO usando modo mais compatível com polling
 socketio = SocketIO(
     app, 
     cors_allowed_origins="*", 
-    async_mode='eventlet',
+    async_mode='threading',
     ping_timeout=60,
     ping_interval=25,
     engineio_logger=True,
-    ssl_context='adhoc'
+    # Forçar long polling para maior compatibilidade
+    transports=['polling'],
+    always_connect=True,
+    manage_session=False
 )
 
 # Configure database connection
